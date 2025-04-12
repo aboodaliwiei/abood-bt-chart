@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abood BT Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
+    }
+    header {
+      background: #1f1f1f;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .note, .tools {
+      text-align: center;
+      padding: 1rem;
+    }
+    .language-switch, .theme-toggle {
+      position: absolute;
+      top: 10px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .theme-toggle { right: 10px; }
+    .language-switch { left: 10px; }
+    #chart {
+      height: 500px;
+    }
+  </style>
+</head>
+<body>
+  <header>Abood BT Chart</header>
+  <button class="language-switch" onclick="toggleLang()">EN / AR</button>
+  <button class="theme-toggle" onclick="toggleTheme()">☀️ / 🌙</button>
+  <div id="chart"></div>
+  <div class="tools" id="tools">[ أدوات التحليل: RSI, MACD قيد التشغيل التجريبي... ]</div>
+  <div class="note" id="note">جميع المستخدمين يمكنهم مشاهدة الشارت، أما الميزات الكاملة فتتطلب تسجيل الدخول.</div>
+
+  <script>
+    const chart = LightweightCharts.createChart(document.getElementById("chart"), {
+      layout: {
+        background: { color: '#121212' },
+        textColor: '#ffffff'
+      },
+      grid: {
+        vertLines: { color: '#444' },
+        horzLines: { color: '#444' }
+      },
+      timeScale: { borderColor: "#444" },
+      height: 500
+    });
+
+    const candleSeries = chart.addCandlestickSeries();
+    const volumeSeries = chart.addHistogramSeries({
+      color: '#26a69a',
+      priceFormat: { type: 'volume' },
+      priceScaleId: '',
+      scaleMargins: {
+        top: 0.8,
+        bottom: 0,
+      },
+    });
+
+    fetch("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1")
+      .then(res => res.json())
+      .then(data => {
+        const prices = data.prices;
+        const volumes = data.total_volumes;
+
+        const candles = prices.slice(0, -1).map((item, i) => {
+          const time = Math.floor(item[0] / 1000);
+          const open = item[1];
+          const close = prices[i + 1][1];
+          const high = Math.max(open, close);
+          const low = Math.min(open, close);
+          return { time, open, high, low, close };
+        });
+
+        const volumeData = volumes.slice(0, -1).map((v, i) => {
+          return {
+            time: Math.floor(v[0] / 1000),
+            value: v[1],
+            color: candles[i].close > candles[i].open ? '#26a69a' : '#ef5350'
+          };
+        });
+
+        candleSeries.setData(candles);
+        volumeSeries.setData(volumeData);
+      });
+
+    function toggleTheme() {
+      const current = document.body.style.backgroundColor;
+      const isDark = current === "" || current === "rgb(18, 18, 18)";
+      document.body.style.backgroundColor = isDark ? "#ffffff" : "#121212";
+      document.body.style.color = isDark ? "#000" : "#fff";
+    }
+
+    function toggleLang() {
+      const current = document.documentElement.lang;
+      const isEn = current === "en";
+      document.documentElement.lang = isEn ? "ar" : "en";
+      document.querySelector('header').textContent = isEn ? "شارت عبد - بيتكوين" : "Abood BT Chart";
+      document.getElementById('tools').textContent = isEn ?
+        "[ أدوات التحليل: RSI, MACD قيد التشغيل التجريبي... ]" :
+        "[ Analysis Tools: RSI, MACD under testing... ]";
+      document.getElementById('note').textContent = isEn ?
+        "جميع المستخدمين يمكنهم مشاهدة الشارت، أما الميزات الكاملة فتتطلب تسجيل الدخول." :
+        "All users can view the chart. Full features require login.";
+    }
+  </script>
+</body>
+</html>
